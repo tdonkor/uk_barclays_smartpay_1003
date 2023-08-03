@@ -254,7 +254,7 @@ namespace Acrelec.Mockingbird.Barclaycard_Smartpay
             comPort.ControlType = SettingDataType.String;
             comPort.ControlName = "Com Port";
             comPort.RealName = "ComPort";
-            comPort.CurrentValue = "COM1";
+            comPort.CurrentValue = "VCOM1";
             comPort.ControlDescription = "The payment application COM Port.";
 
             kioskNumber = new AdminPeripheralSetting();

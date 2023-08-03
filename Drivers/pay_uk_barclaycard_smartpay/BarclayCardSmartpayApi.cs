@@ -44,7 +44,6 @@ namespace UK_BARCLAYCARD_SMARTPAY
         /// <summary>
         /// Overload the constructor get set up values and pass to the API
         /// </summary>
-        //public BarclayCardSmartpayApi(int currency, int country, int port,  string comPort, string sourceId, int kioskNumber)
         public BarclayCardSmartpayApi(int currency, int country, int port, string sourceId, int kioskNumber)
         {
             // Establish the remote endpoint for the socket.  
@@ -52,41 +51,24 @@ namespace UK_BARCLAYCARD_SMARTPAY
 
             this.currency = currency;
             this.country = country;
-            this.port = port;
-            //this.comPort = comPort;
+            this.port = port;   
             this.sourceId = sourceId;
             this.kioskNumber = kioskNumber;
-            //this.output = output;
-            //this.serviceName = serviceName;
+          
 
             Log.Info($"Currency: {currency} ");
             Log.Info($"Country :{country} ");
-            Log.Info($"Port: {port} ");
-           // Log.Info($"comPort: {comPort} ");
+            Log.Info($"Port: {port} ");       
             Log.Info($"SourceID: {sourceId} ");
             Log.Info($"Kiosk Number: {kioskNumber} ");
-            //Log.Info($"output: {output} ");
+          
 
             isSuccessful = DiagnosticErrMsg.OK;
             ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
             ipAddress = ipHostInfo.AddressList[0];
             remoteEP = new IPEndPoint(ipAddress, port);
         }
-        /// <summary>
-        /// Constructor
-        /// </summary>
-        //public BarclayCardSmartpayApi()
-        //{
-        //    // Establish the remote endpoint for the socket.  
-        //    // This example uses port 8000 on the local computer.  
-        //    // get ini file values
-
-        //    isSuccessful = DiagnosticErrMsg.OK;
-
-        //    ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
-        //    ipAddress = ipHostInfo.AddressList[0];
-        //    remoteEP = new IPEndPoint(ipAddress, port);
-        //}
+       
 
         /// <summary>
         /// The Payment Method executes the payment Authorisation 

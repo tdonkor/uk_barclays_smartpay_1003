@@ -10,6 +10,10 @@ using System.Threading.Tasks;
 using UK_BARCLAYCARD_SMARTPAY.Model;
 using System.ServiceProcess;
 using System.Linq;
+using System.Net.Sockets;
+using System.Xml.Linq;
+using System.Xml;
+using System.Web;
 
 namespace UK_BARCLAYCARD_SMARTPAY
 {
@@ -85,6 +89,8 @@ namespace UK_BARCLAYCARD_SMARTPAY
         private bool solveServiceExist;
         private bool isSolveServiceRunning;
 
+        private string[] fileContents;
+
         public PayService(CoreCommunicator coreCommunicator)
         {
 
@@ -111,7 +117,7 @@ namespace UK_BARCLAYCARD_SMARTPAY
         /// Echo and Paring of the device
         /// </summary>
         /// <param name="parameters">
-        /// Examle : {
+        /// Example : {
         ///            {
         ///                PaymentDuration = 10
         ///                PaymentResult = 2
@@ -123,14 +129,14 @@ namespace UK_BARCLAYCARD_SMARTPAY
         {
             Log.Info(PAY_SERVICE_LOG, "call Initialize");
 
-            Log.Info(PAY_SERVICE_LOG, $"        parameters:\n{parameters.ToString()}.");
+            Log.Info(PAY_SERVICE_LOG, $"        Init(): parameters:\n{parameters.ToString()}.");
 
             //Check if another method is executing
             if (IsCallbackMethodExecuting)
             {
                 coreCommunicator.SendMessage(CommunicatorMethods.Init, new { Status = 1 });
 
-                Log.Info(PAY_SERVICE_LOG, "        another method is executing.");
+                Log.Info(PAY_SERVICE_LOG, "        Init(): another method is executing.");
 
                 Log.Info(PAY_SERVICE_LOG, "endcall Initialize");
 
@@ -146,7 +152,7 @@ namespace UK_BARCLAYCARD_SMARTPAY
             {
                 coreCommunicator.SendMessage(CommunicatorMethods.Init, new { Status = 1 });
 
-                Log.Info(PAY_SERVICE_LOG, "        failed to deserialize the init parameters.");
+                Log.Info(PAY_SERVICE_LOG, "        Init(): failed to deserialize the init parameters.");
                
             }
             else
@@ -156,68 +162,94 @@ namespace UK_BARCLAYCARD_SMARTPAY
                     paymentDuration = 12;
 
                 coreCommunicator.SendMessage(CommunicatorMethods.Init, new { Status = 0 });
-                Log.Info(PAY_SERVICE_LOG, "        success.");
+                Log.Info(PAY_SERVICE_LOG, "        Init(): success.");
             }
 
             try
             {
-                // these must be filled in at the beginning and the values correct to work
-                // they nust all be valid
+
                 if (string.IsNullOrEmpty(comPort))
                 {
-                    Log.Error($"Init(): Invalid ComPort: {comPort}.");
+                    Log.Error(PAY_SERVICE_LOG, $"        Init(): Invalid comPort value:  {comPort}.");
                     return;
                 }
-                
-               
-                     string comFilePath = @"C:\Barclaycard\SolveConnect\SmartSwitch_Public.dfn";
-                     string fileContents = File.ReadAllText(comFilePath).ToUpper();
 
-                   
-                if(fileContents.Contains(comPort.ToUpper()))
+                // check SmartSwitch_Public.dfn is available
+                // Checking the existence of the specified
+
+                // check comport set correctly
+                string comFilePath = @"C:\Barclaycard\SolveConnect\SmartSwitch_Public.dfn";
+               
+
+                if (File.Exists(comFilePath))
                 {
-                      
-                       Log.Info($"Init():  ComPort matches the So: {comPort}.");
+                    Log.Info(PAY_SERVICE_LOG, $"        Init(): {comFilePath} exists.");
+                    //extract the contents
+                    fileContents = File.ReadAllLines(comFilePath);
+                  
                 }
                 else
                 {
-                    Log.Error($"Init(): Invalid ComPort: {comPort}.");
+                    Log.Error(PAY_SERVICE_LOG, $"        Init(): {comFilePath}  does not exist.");
                     return;
                 }
-                                        
-                    
-               
+                
+                bool comPortflag =  false;
+
+                Log.Info(PAY_SERVICE_LOG, $"        Init(): comPort value: {comPort}.");
+
+                foreach (string line in fileContents)
+                {
+
+                    if (line.Contains(comPort))
+                    {
+                        comPortflag = true;
+                    }
+
+                }
+
+                if (comPortflag ==  true)
+                {
+
+                    Log.Info($"        Init():  ComPort matches the Setting in SmartSwitch_Public.dfn : {comPort}.");
+                }
+                else
+                {
+                    Log.Error($"        Init(): Invalid ComPort: {comPort}.");
+                    return;
+                }
+
 
                 if (port <=0)
                 {
-                    Log.Error(PAY_SERVICE_LOG, $"Init(): Invalid port:  {port}.");
+                    Log.Error(PAY_SERVICE_LOG, $"        Init(): Invalid port:  {port}.");
                     return;
                 }
                 if (kioskNumber <= 0)
                 {
-                    Log.Error(PAY_SERVICE_LOG, $"Init(): Invalid kioskNumber: {kioskNumber}.");
+                    Log.Error(PAY_SERVICE_LOG, $"        Init():: Invalid kioskNumber: {kioskNumber}.");
                     return;
                 }
                 if (country <= 0)
                 {
-                    Log.Error(PAY_SERVICE_LOG, $"Init(): Invalid country:  {country}.");
+                    Log.Error(PAY_SERVICE_LOG, $"        Init(): Invalid country:  {country}.");
                     return;
                 }
                 if (currency <= 0)
                 {
-                    Log.Error(PAY_SERVICE_LOG, $"Init(): Invalid currency:  {currency}.");
+                    Log.Error(PAY_SERVICE_LOG, $"        Init(): Invalid currency:  {currency}.");
                     return;
                 }
           
                 if (string.IsNullOrEmpty(sourceId))
                 {
-                    Log.Error(PAY_SERVICE_LOG, $"Init(): Invalid SourceId value:  {sourceId}.");
+                    Log.Error(PAY_SERVICE_LOG, $"        Init(): Invalid SourceId value:  {sourceId}.");
                     return;
                 }
 
                 if (string.IsNullOrEmpty(serviceName))
                 {
-                    Log.Error(PAY_SERVICE_LOG, $"Init(): Invalid Service Name:  {serviceName}.");
+                    Log.Error(PAY_SERVICE_LOG, $"        Init():: Invalid Service Name:  {serviceName}.");
                     return;
                 }
 
@@ -226,41 +258,40 @@ namespace UK_BARCLAYCARD_SMARTPAY
 
                 if (solveServiceExist == true)
                 {
-                    Log.Info(PAY_SERVICE_LOG, $"Init(): SolveConnect service exists.");
+                    Log.Info(PAY_SERVICE_LOG, $"        Init(): SolveConnect service exists.");
 
                     // so now check if Service is running
                     isSolveServiceRunning = ServiceIsRunning(serviceName);
                     if (isSolveServiceRunning != true)
                     {
-                        Log.Error(PAY_SERVICE_LOG, $"Init(): {serviceName} service is not running.");
+                        Log.Error(PAY_SERVICE_LOG, $"        Init(): {serviceName} service is not running.");
                         return;
                     }
                     else
                     {
-                        Log.Info(PAY_SERVICE_LOG, $"Init(): {serviceName} service is running.");
+                        Log.Info(PAY_SERVICE_LOG, $"        Init(): {serviceName} service is running.");
                     }
 
                 }
                 else {
-                    Log.Error(PAY_SERVICE_LOG, $"Init(): SolveConnect service doesn't exist.");
+                    Log.Error(PAY_SERVICE_LOG, $"        Init(): SolveConnect service doesn't exist.");
                     return;
                 }
 
                 // pass the items to the API 
-                using (var api = new BarclayCardSmartpayApi(currency, country, port, sourceId, kioskNumber))
-               // using (var api = new BarclayCardSmartpayApi(currency, country, port, comPort, sourceId, kioskNumber))
+                using (var api = new BarclayCardSmartpayApi(currency, country, port, sourceId, kioskNumber))             
                 {
-                    Log.Info(PAY_SERVICE_LOG, "Init(): Passing items to the API !");
+                    Log.Info(PAY_SERVICE_LOG, "        Init(): Passing items to the API !");
                 }
             }
             catch (Exception ex)
             {
-                Log.Error(PAY_SERVICE_LOG, "Init(): " + ex.Message);
+                Log.Error(PAY_SERVICE_LOG, "        Init(): " + ex.Message);
                 return;
             }
             finally
             {
-                Log.Info(PAY_SERVICE_LOG, "Init(): Init method finished.");
+                Log.Info(PAY_SERVICE_LOG, "        Init(): Init method finished.");
             }
 
             IsCallbackMethodExecuting = false;
@@ -290,7 +321,7 @@ namespace UK_BARCLAYCARD_SMARTPAY
             {
                 coreCommunicator.SendMessage(CommunicatorMethods.Test, new { Status = 1 });
 
-                Log.Info(PAY_SERVICE_LOG, "        another method is executing.");
+                Log.Info(PAY_SERVICE_LOG, "        Test(): another method is executing.");
 
                 Log.Info(PAY_SERVICE_LOG, "endcall Test");
 
@@ -300,31 +331,31 @@ namespace UK_BARCLAYCARD_SMARTPAY
                 IsCallbackMethodExecuting = true;
 
             coreCommunicator.SendMessage(CommunicatorMethods.Test, new { Status = 0 });
-            Log.Info(PAY_SERVICE_LOG, "        success.");
+            Log.Info(PAY_SERVICE_LOG, "        Test(): success.");
 
             IsCallbackMethodExecuting = false;
 
             // check Serive still running 
             if (solveServiceExist == true)
             {
-                Log.Info(PAY_SERVICE_LOG, $"Init(): SolveConnect service exists.");
+                Log.Info(PAY_SERVICE_LOG, $"        Test(): SolveConnect service exists.");
 
                 // so now check if Service is running
                 isSolveServiceRunning = ServiceIsRunning(serviceName);
                 if (isSolveServiceRunning != true)
                 {
-                    Log.Error(PAY_SERVICE_LOG, $"Test(): {serviceName} service is not running.");
+                    Log.Error(PAY_SERVICE_LOG, $"        Test(): {serviceName} service is not running.");
                     return;
                 }
                 else
                 {
-                    Log.Info(PAY_SERVICE_LOG, $"Test(): {serviceName} service is running.");
+                    Log.Info(PAY_SERVICE_LOG, $"        Test(): {serviceName} service is running.");
                 }
 
             }
             else
             {
-                Log.Error(PAY_SERVICE_LOG, $"Test(): SolveConnect service doesn't exist.");
+                Log.Error(PAY_SERVICE_LOG, $"        Test(): SolveConnect service doesn't exist.");
                 return;
             }
 
@@ -355,7 +386,7 @@ namespace UK_BARCLAYCARD_SMARTPAY
             {
                 coreCommunicator.SendMessage(CommunicatorMethods.Pay, new { Status = 297, Description = "Another method is executing." });
 
-                Log.Info(PAY_SERVICE_LOG, "        another method is executing.");
+                Log.Info(PAY_SERVICE_LOG, "        Pay(): another method is executing.");
                 Log.Info(PAY_SERVICE_LOG, "endcall Pay");
 
                 return;
@@ -365,28 +396,28 @@ namespace UK_BARCLAYCARD_SMARTPAY
             try
             {
                 //Get the pay request object that will be sent to the fiscal printer
-                Log.Info(PAY_SERVICE_LOG, "        deserialize the pay request parameters.");
+                Log.Info(PAY_SERVICE_LOG, "        Pay(): deserialize the pay request parameters.");
                 PayRequest payRequest = GetPayRequest(parameters.ToString());
 
                 //Check if the pay deserialization was successful
                 if (payRequest == null)
                 {
                     coreCommunicator.SendMessage(CommunicatorMethods.Pay, new { Status = 331, Description = "Failed to deserialize the pay request parameters." });
-                    Log.Info(PAY_SERVICE_LOG, "        failed to deserialize the pay request parameters.");
+                    Log.Info(PAY_SERVICE_LOG, "        Pay(): failed to deserialize the pay request parameters.");
                     return;
                 }
 
                 if (payRequest.Amount == 0)
                 {
                     coreCommunicator.SendMessage(CommunicatorMethods.Pay, new { Status = -299, Description = "amount can't be zero.", PayDetails = new PayDetails() });
-                    Log.Info(PAY_SERVICE_LOG, "        amount can't be zero.");
+                    Log.Info(PAY_SERVICE_LOG, "        Pay(): amount can't be zero.");
                     return;
                 }
 
                 if (string.IsNullOrEmpty(payRequest.TransactionReference))
                 {
                     coreCommunicator.SendMessage(CommunicatorMethods.Pay, new { Status = -298, Description = "transaction reference can't be empty.", PayDetails = new PayDetails() });
-                    Log.Info(PAY_SERVICE_LOG, "        transaction reference can't be empty.");
+                    Log.Info(PAY_SERVICE_LOG, "        Pay(): transaction reference can't be empty.");
                     return;
                 }
 
@@ -396,15 +427,14 @@ namespace UK_BARCLAYCARD_SMARTPAY
                 payDetails.PaidAmount = payRequest.Amount;
                 payDetails.TransactionReference = payRequest.TransactionReference;
 
-                Log.Info(PAY_SERVICE_LOG,       $"Amount = {payDetails.PaidAmount}.");
-                Log.Info(PAY_SERVICE_LOG,       $"Transaction Reference  = {payDetails.TransactionReference}.");
-                Log.Info(PAY_SERVICE_LOG,       "Payment method started...");
+                Log.Info(PAY_SERVICE_LOG,       $"        Pay(): Amount = {payDetails.PaidAmount}.");
+                Log.Info(PAY_SERVICE_LOG,       $"        Pay(): Transaction Reference  = {payDetails.TransactionReference}.");
+                Log.Info(PAY_SERVICE_LOG,        "        Pay(): Payment method started...");
 
-               // using (var api = new BarclayCardSmartpayApi(currency, country, port, comPort, sourceId, kioskNumber))
                 using (var api = new BarclayCardSmartpayApi(currency, country, port, sourceId, kioskNumber))
                 {
                         var payResult = api.Pay(payDetails.PaidAmount, payDetails.TransactionReference, out TransactionReceipts payReceipts, out string transNum);
-                        Log.Info(PAY_SERVICE_LOG,       $"Pay Result: {payResult}");
+                        Log.Info(PAY_SERVICE_LOG,       $"        Pay(): Pay Result: {payResult}");
 
                         if (payResult != DiagnosticErrMsg.OK)
                         {
@@ -416,25 +446,30 @@ namespace UK_BARCLAYCARD_SMARTPAY
                             else
                                  CreateTicket(payReceipts.CustomerReturnedReceipt, "CUSTOMER");
 
-                            Log.Info(PAY_SERVICE_LOG, "        payment failed.");
+                            Log.Info(PAY_SERVICE_LOG, "        Pay(): payment failed.");
                                 coreCommunicator.SendMessage(CommunicatorMethods.Pay, new { Status = 334, Description = "Failed payment", PayDetailsExtended = payDetails });
                         }
                         else
                         {
-                            Log.Info(PAY_SERVICE_LOG, "        payment succeeded.");
+                            Log.Info(PAY_SERVICE_LOG, "        Pay(): payment succeeded.");
 
                              //persist the Merchant transaction
-                             // PersistTransaction(payReceipts.MerchantReturnedReceipt, "MERCHANT");
+                              PersistTransaction(payReceipts.MerchantReturnedReceipt, "MERCHANT");
 
                             payDetails.HasClientReceipt = true;
-                            payDetails.TenderMediaId = paymentTenderMediaID;
+
                             payDetails.PaidAmount = payRequest.Amount;
                             payDetails.TransactionReference = payRequest.TransactionReference;
 
-                            //create receipt
-                            CreateTicket(payReceipts.CustomerReturnedReceipt, "CUSTOMER");
+                            //get tender Id details
+                            payDetails.TenderMediaId = GetTenderID(payReceipts.CustomerReturnedReceipt.ToString());
+                            payDetails.TenderMediaDetails = payDetails.TenderMediaId;
+                            Log.Info(PAY_SERVICE_LOG, $"        Pay(): payDetails.TenderMediaId: {payDetails.TenderMediaId}");
+
+                        //create receipt
+                        CreateTicket(payReceipts.CustomerReturnedReceipt, "CUSTOMER");
                       
-                            Log.Info(PAY_SERVICE_LOG, "        credit card payment succeeded.");
+                            Log.Info(PAY_SERVICE_LOG, "        Pay(): credit card payment succeeded.");
                             coreCommunicator.SendMessage(CommunicatorMethods.Pay, new { Status = 0, Description = "Successful payment", PayDetailsExtended = payDetails });
 
                         }
@@ -442,7 +477,7 @@ namespace UK_BARCLAYCARD_SMARTPAY
                          //treat answer type
                          if (wasCancelTigged && isPaymentCancelSuccessful)
                          {
-                              Log.Info(PAY_SERVICE_LOG, "        Payment was cancelled.");
+                              Log.Info(PAY_SERVICE_LOG, "        Pay(): Payment was cancelled.");
                              coreCommunicator.SendMessage(CommunicatorMethods.Pay, new { Status = 335, Description = "Failed payment. Canceled by user.", PayDetailsExtended = payDetails });
                          }
                     }
@@ -580,7 +615,7 @@ namespace UK_BARCLAYCARD_SMARTPAY
                     jObject["TenderMedia"] == null ||
                     jObject["IsPaymentExecuteCommandSuccessful"] == null ||
                     jObject["IsPaymentCancelSuccessful"] == null ||
-                   // jObject["ComPort"] == null ||
+                    jObject["ComPort"] == null ||
                     jObject["Port"] == null ||
                     jObject["KioskNumber"] == null ||
                     jObject["SourceId"] == null ||
@@ -595,8 +630,8 @@ namespace UK_BARCLAYCARD_SMARTPAY
                 isPaymentExecuteCommandSuccessful = bool.Parse(jObject["IsPaymentExecuteCommandSuccessful"].ToString());
                 paymentResult = jObject["PaymentResult"].ToString();
                 paymentTenderMediaID = jObject["TenderMedia"].ToString();
-                comPort = jObject["ComPort"].ToString();
                 port = Convert.ToInt32(jObject["Port"].ToString());
+                comPort = jObject["ComPort"].ToString();
                 kioskNumber = Convert.ToInt32(jObject["KioskNumber"].ToString());
                 currency = Convert.ToInt32(jObject["Currency"].ToString());
                 country = Convert.ToInt32(jObject["Country"].ToString());
@@ -715,7 +750,7 @@ namespace UK_BARCLAYCARD_SMARTPAY
                 //Write the new ticket
                 File.WriteAllText(ticketPath, ticket);
 
-                Log.Info($"Itcket Created: {ticketType}");
+                Log.Info($"ticket Created: {ticketType}");
 
                 //persist the transaction
                 PersistTransaction(ticket, ticketType);
@@ -748,6 +783,29 @@ namespace UK_BARCLAYCARD_SMARTPAY
             {
                 return false;
             }
+        }
+
+        private string GetTenderID(string ticket)
+        {
+            string card = string.Empty;
+
+            var values = new[] { "VISA", "MASTERCARD", "ELECTRON", "MAESTRO", "MASTERCARD CREDIT", "AMEX", "UNION PAY",
+                                 "VISA CONTACTLESS", "CONTACTLESS VISA", "VISA DEBIT", "VISA CREDIT",  "VISA ELECTRON",
+                                 "VISA PURCHASING",  "MASTERCARD CONTACTLESS", "CONTACTLESS MASTERCARD", "DINERS",
+                                 "INTERNATIONAL MAESTRO", "MAESTRO INTERNATIONAL",  "EXPRESSPAY", "AMERICAN EXPRESS",
+                                 "DISCOVER", "UNION PAY CREDIT", "JCB CREDIT", "GIVEX" };
+
+           
+
+            foreach (string val in values)
+            {
+                if (ticket.Contains(val))
+                {
+                    card = val;
+                }
+            }
+
+            return card;
         }
 
     }
