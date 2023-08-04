@@ -179,22 +179,22 @@ namespace UK_BARCLAYCARD_SMARTPAY
 
                 // check comport set correctly
                 string comFilePath = @"C:\Barclaycard\SolveConnect\SmartSwitch_Public.dfn";
-               
+
 
                 if (File.Exists(comFilePath))
                 {
                     Log.Info(PAY_SERVICE_LOG, $"        Init(): {comFilePath} exists.");
                     //extract the contents
                     fileContents = File.ReadAllLines(comFilePath);
-                  
+
                 }
                 else
                 {
                     Log.Error(PAY_SERVICE_LOG, $"        Init(): {comFilePath}  does not exist.");
                     return;
                 }
-                
-                bool comPortflag =  false;
+
+                bool comPortflag = false;
 
                 Log.Info(PAY_SERVICE_LOG, $"        Init(): comPort value: {comPort}.");
 
@@ -208,14 +208,14 @@ namespace UK_BARCLAYCARD_SMARTPAY
 
                 }
 
-                if (comPortflag ==  true)
+                if (comPortflag == true)
                 {
 
-                    Log.Info($"        Init():  ComPort matches the Setting in SmartSwitch_Public.dfn : {comPort}.");
+                    Log.Info($"        Init():  ComPort matches the Setting in the SmartSwitch_Public.dfn file : {comPort}.");
                 }
                 else
                 {
-                    Log.Error($"        Init(): Invalid ComPort: {comPort}.");
+                    Log.Error($"        Init():  ComPort does not match the ComPort Setting in SmartSwitch_Public.dfn file : {comPort}.");
                     return;
                 }
 
@@ -335,7 +335,7 @@ namespace UK_BARCLAYCARD_SMARTPAY
 
             IsCallbackMethodExecuting = false;
 
-            // check Serive still running 
+            //check Serive still running
             if (solveServiceExist == true)
             {
                 Log.Info(PAY_SERVICE_LOG, $"        Test(): SolveConnect service exists.");
@@ -345,10 +345,12 @@ namespace UK_BARCLAYCARD_SMARTPAY
                 if (isSolveServiceRunning != true)
                 {
                     Log.Error(PAY_SERVICE_LOG, $"        Test(): {serviceName} service is not running.");
+                    coreCommunicator.SendMessage(CommunicatorMethods.Test, new { Status = 1 });
                     return;
                 }
                 else
                 {
+                    coreCommunicator.SendMessage(CommunicatorMethods.Test, new { Status = 0 });
                     Log.Info(PAY_SERVICE_LOG, $"        Test(): {serviceName} service is running.");
                 }
 
@@ -610,11 +612,13 @@ namespace UK_BARCLAYCARD_SMARTPAY
                 if (jObject == null)
                     return false;
 
-                if (jObject["PaymentDuration"] == null ||
-                    jObject["PaymentResult"] == null ||
-                    jObject["TenderMedia"] == null ||
+                if (
                     jObject["IsPaymentExecuteCommandSuccessful"] == null ||
                     jObject["IsPaymentCancelSuccessful"] == null ||
+                    jObject["PaymentDuration"] == null ||
+                    jObject["PaymentResult"] == null ||
+                    jObject["IsPaymentCancelSuccessful"] == null ||
+                    jObject["TenderMedia"] == null ||
                     jObject["ComPort"] == null ||
                     jObject["Port"] == null ||
                     jObject["KioskNumber"] == null ||
