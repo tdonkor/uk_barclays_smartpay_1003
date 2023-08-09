@@ -97,6 +97,7 @@ namespace UK_BARCLAYCARD_SMARTPAY
             //check for a success or failure string from smartpay
             string submitPaymentResult = string.Empty;
             string finaliseResult = string.Empty;
+            string responseResult = string.Empty;
             string description = string.Empty;
 
 
@@ -284,13 +285,22 @@ namespace UK_BARCLAYCARD_SMARTPAY
             if (CheckIsNullOrEmpty(processTransRespStr, "Process Transaction Response")) isSuccessful = DiagnosticErrMsg.NOTOK;
             else
             {
-                if (processTransRespStr.Contains("declined"))
+                // CHECK FOR PAYMENT_RESULT
+              
+                responseResult = CheckPaymentResult(processTransRespStr);
+
+                if (responseResult == "success")
                 {
-                    Log.Error("***** Auth Process Transaction Response has Declined the Transaction. *****");
+                    Log.Info("****** Authorisation Transaction Response Successful******");
+                }
+                else
+                {
+                    Log.Info("***** Authorisation Transaction Response not Failed *****");
                     isSuccessful = DiagnosticErrMsg.NOTOK;
                 }
+               
             }
-
+           
             Log.Info("ProcessTransRespSuccessXML Socket Open: " + SocketConnected(processTransactionRespSocket));
 
 
@@ -458,6 +468,38 @@ namespace UK_BARCLAYCARD_SMARTPAY
         }
 
         /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="submitResult"></param>
+        /// <returns></returns>
+        private string CheckPaymentResult(string submitResult)
+        {
+            string result = string.Empty;
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml(submitResult);
+            XmlNodeList nodeResult = doc.GetElementsByTagName("PAYMENT_RESULT");
+
+            for (int i = 0; i < nodeResult.Count; i++)
+            {
+                if ((string.Equals(nodeResult[i].InnerXml, "on-line", StringComparison.OrdinalIgnoreCase) ||
+                    (string.Equals(nodeResult[i].InnerXml, "terminal", StringComparison.OrdinalIgnoreCase) ||
+                    (string.Equals(nodeResult[i].InnerXml, "manual", StringComparison.OrdinalIgnoreCase) 
+                    ))))
+                {
+                    Log.Info($" Payment Result Success: node result = {nodeResult[i].InnerXml} ");
+                    result = "success";                    
+                }
+                else
+                {
+                    Log.Info($" Payment Result Failure: node result = {nodeResult[i].InnerXml} ");
+                    result = "failure";
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
         /// Checks a string for a success or failure string
         /// </summary>
         /// <param name="submitResult"></param>
@@ -470,8 +512,7 @@ namespace UK_BARCLAYCARD_SMARTPAY
             XmlNodeList nodeResult = doc.GetElementsByTagName("RESULT");
 
             for (int i = 0; i < nodeResult.Count; i++)
-            {
-                // if (nodeResult[i].InnerXml == "success")
+            {             
                 if (string.Equals(nodeResult[i].InnerXml, "success", StringComparison.OrdinalIgnoreCase))
                     result = "success";
                 else
@@ -480,6 +521,11 @@ namespace UK_BARCLAYCARD_SMARTPAY
 
             return result;
         }
+
+
+  
+
+
         /// <summary>
         /// Payment method
         /// </summary>

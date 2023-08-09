@@ -449,7 +449,7 @@ namespace UK_BARCLAYCARD_SMARTPAY
                                  CreateTicket(payReceipts.CustomerReturnedReceipt, "CUSTOMER");
 
                             Log.Info(PAY_SERVICE_LOG, "        Pay(): payment failed.");
-                                coreCommunicator.SendMessage(CommunicatorMethods.Pay, new { Status = 334, Description = "Failed payment", PayDetailsExtended = payDetails });
+                             coreCommunicator.SendMessage(CommunicatorMethods.Pay, new { Status = 334, Description = "Failed payment", PayDetailsExtended = payDetails });
                         }
                         else
                         {
@@ -792,23 +792,33 @@ namespace UK_BARCLAYCARD_SMARTPAY
         private string GetTenderID(string ticket)
         {
             string card = string.Empty;
+            string temp = string.Empty;
 
-            var values = new[] { "VISA", "MASTERCARD", "ELECTRON", "MAESTRO", "MASTERCARD CREDIT", "AMEX", "UNION PAY",
+            var values = new[] { "VISA", "MASTERCARD", "ELECTRON", "MAESTRO", "AMEX", "UNION PAY", "MASTERCARD CREDIT", "MASTERCARD DEBIT",
                                  "VISA CONTACTLESS", "CONTACTLESS VISA", "VISA DEBIT", "VISA CREDIT",  "VISA ELECTRON",
-                                 "VISA PURCHASING",  "MASTERCARD CONTACTLESS", "CONTACTLESS MASTERCARD", "DINERS",
-                                 "INTERNATIONAL MAESTRO", "MAESTRO INTERNATIONAL",  "EXPRESSPAY", "AMERICAN EXPRESS",
+                                 "VISA PURCHASING",  "MASTERCARD CONTACTLESS", "CONTACTLESS MASTERCARD", "DINERS", "INTERNATIONAL MAESTRO",
+                                 "INTERNATIONAL MAESTRO DEBIT", "MAESTRO INTERNATIONAL", "UK MAESTRO DEBIT", "EXPRESSPAY", "AMERICAN EXPRESS",
                                  "DISCOVER", "UNION PAY CREDIT", "JCB CREDIT", "GIVEX" };
 
-           
+
+            ticket = ticket.ToUpper();
 
             foreach (string val in values)
-            {
+            {               
                 if (ticket.Contains(val))
                 {
                     card = val;
+                     if (string.Equals(card, val, StringComparison.OrdinalIgnoreCase))
+                     {
+                        // cards match
+                        card = val;
+                        continue;
+                     } else
+                        card = string.Empty;
                 }
             }
 
+            Log.Info($"textracted card from receipt: {card}");
             return card;
         }
 
