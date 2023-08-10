@@ -25,6 +25,9 @@ namespace UK_BARCLAYCARD_SMARTPAY
 
         // payment success flag
         DiagnosticErrMsg isSuccessful;
+        string tenderCard;
+
+        APIResults apiResults;
 
         // Data buffer for incoming data.
         //make large enough to take the largest return
@@ -67,6 +70,8 @@ namespace UK_BARCLAYCARD_SMARTPAY
             ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
             ipAddress = ipHostInfo.AddressList[0];
             remoteEP = new IPEndPoint(ipAddress, port);
+
+            apiResults = new APIResults();
         }
        
 
@@ -83,7 +88,7 @@ namespace UK_BARCLAYCARD_SMARTPAY
         /// <param name="transactionRef"></param>
         /// <param name="transactionReceipts"></param>
         /// <returns></returns>
-        public DiagnosticErrMsg Pay(int amount, string transactionRef, out TransactionReceipts transactionReceipts, out string transNum)
+        public APIResults Pay(int amount, string transactionRef, out TransactionReceipts transactionReceipts, out string transNum)
         {
 
             XDocument paymentXml = null;
@@ -255,7 +260,7 @@ namespace UK_BARCLAYCARD_SMARTPAY
                     //check if reciept has a successful transaction
                     if (transactionReceipts.CustomerReturnedReceipt.Contains("DECLINED"))
                     {
-                        Log.Error(PayService.PAY_SERVICE_LOG, "Customer Receipt has Declined the Transaction.");
+                        Log.Error(PayService.PAY_SERVICE_LOG, "        Pay(): Customer Receipt has Declined the Transaction.");
                         isSuccessful = DiagnosticErrMsg.NOTOK;
                     }
                     else
@@ -298,7 +303,11 @@ namespace UK_BARCLAYCARD_SMARTPAY
                     Log.Info("***** Authorisation Transaction Response not Failed *****");
                     isSuccessful = DiagnosticErrMsg.NOTOK;
                 }
-               
+                // check card
+                tenderCard = CheckCard(processTransRespStr);
+
+                 Log.Info($"        Pay():Card found = {tenderCard}");
+
             }
            
             Log.Info("ProcessTransRespSuccessXML Socket Open: " + SocketConnected(processTransactionRespSocket));
@@ -339,14 +348,20 @@ namespace UK_BARCLAYCARD_SMARTPAY
 
             Log.Info("Finalise Socket Open: " + SocketConnected(finaliseSocket));
 
-            return isSuccessful;
+
+            //  populate the APIResultsclass
+            //
+            apiResults.payResult = isSuccessful;
+            apiResults.card = tenderCard;
+
+            return apiResults;
         }// end of Pay
 
         public bool CheckIsNullOrEmpty(string stringToCheck, string stringCheck)
         {
             if (string.IsNullOrEmpty(stringToCheck))
             {
-                Log.Error($" String check: {stringCheck} returned a Null or Empty value.");
+                Log.Error($"        CheckIsNullOrEmpty: String check: {stringCheck} returned a Null or Empty value.");
                 isSuccessful = DiagnosticErrMsg.NOTOK;
                 return true;
             }
@@ -453,15 +468,15 @@ namespace UK_BARCLAYCARD_SMARTPAY
             }
             catch (ArgumentNullException ane)
             {
-                Log.Error("ArgumentNullException : {0}", ane.ToString());
+                Log.Error("        sendToSmartPay(): ArgumentNullException : {0}", ane.ToString());
             }
             catch (SocketException se)
             {
-                Log.Error("SocketException : {0}", se.ToString());
+                Log.Error("        sendToSmartPay(): SocketException : {0}", se.ToString());
             }
             catch (Exception e)
             {
-                Log.Error("Unexpected exception : {0}", e.ToString());
+                Log.Error("        sendToSmartPay(): Unexpected exception : {0}", e.ToString());
             }
 
             return string.Empty;
@@ -486,12 +501,12 @@ namespace UK_BARCLAYCARD_SMARTPAY
                     (string.Equals(nodeResult[i].InnerXml, "manual", StringComparison.OrdinalIgnoreCase) 
                     ))))
                 {
-                    Log.Info($" Payment Result Success: node result = {nodeResult[i].InnerXml} ");
+                    Log.Info($"        Payment Result Success: node result = {nodeResult[i].InnerXml} ");
                     result = "success";                    
                 }
                 else
                 {
-                    Log.Info($" Payment Result Failure: node result = {nodeResult[i].InnerXml} ");
+                    Log.Info($"        Payment Result Failure: node result = {nodeResult[i].InnerXml} ");
                     result = "failure";
                 }
             }
@@ -522,8 +537,30 @@ namespace UK_BARCLAYCARD_SMARTPAY
             return result;
         }
 
+        /// <summary>
+        /// Checks a string for a success or failure string
+        /// </summary>
+        /// <param name="submitResult"></param>
+        /// <returns></returns>
+        private string CheckCard(string submitResult)
+        {
+            string card = string.Empty;
+            XmlDocument doc = new XmlDocument();
+            doc.LoadXml(submitResult);
+            XmlNodeList nodeResult = doc.GetElementsByTagName("ACQUIRER");
 
-  
+            for (int i = 0; i < nodeResult.Count; i++)
+            {
+                card = nodeResult[i].InnerXml;
+                   
+            }
+
+            return card;
+        }
+
+
+
+
 
 
         /// <summary>

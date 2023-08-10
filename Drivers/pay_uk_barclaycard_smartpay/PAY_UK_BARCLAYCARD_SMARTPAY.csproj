@@ -67,6 +67,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="APIResults.cs" />
     <Compile Include="AppConfiguration.cs" />
     <Compile Include="BarclayCardSmartpayApi.cs" />
     <Compile Include="Communicator\CommunicatorMethods.cs" />

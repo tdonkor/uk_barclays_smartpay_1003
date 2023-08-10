@@ -436,9 +436,9 @@ namespace UK_BARCLAYCARD_SMARTPAY
                 using (var api = new BarclayCardSmartpayApi(currency, country, port, sourceId, kioskNumber))
                 {
                         var payResult = api.Pay(payDetails.PaidAmount, payDetails.TransactionReference, out TransactionReceipts payReceipts, out string transNum);
-                        Log.Info(PAY_SERVICE_LOG,       $"        Pay(): Pay Result: {payResult}");
+                        Log.Info(PAY_SERVICE_LOG,       $"        Pay(): Pay Result: {payResult.payResult}");
 
-                        if (payResult != DiagnosticErrMsg.OK)
+                        if (payResult.payResult != DiagnosticErrMsg.OK)
                         {
                             //create error receipt
                             payDetails.HasClientReceipt = true;
@@ -448,28 +448,30 @@ namespace UK_BARCLAYCARD_SMARTPAY
                             else
                                  CreateTicket(payReceipts.CustomerReturnedReceipt, "CUSTOMER");
 
-                            Log.Info(PAY_SERVICE_LOG, "        Pay(): payment failed.");
+                            Log.Info(PAY_SERVICE_LOG, "        Pay(): Payment Failed.");
                              coreCommunicator.SendMessage(CommunicatorMethods.Pay, new { Status = 334, Description = "Failed payment", PayDetailsExtended = payDetails });
                         }
                         else
                         {
-                            Log.Info(PAY_SERVICE_LOG, "        Pay(): payment succeeded.");
+                            Log.Info(PAY_SERVICE_LOG, "        Pay(): Payment Succeeded.");
 
-                             //persist the Merchant transaction
-                              PersistTransaction(payReceipts.MerchantReturnedReceipt, "MERCHANT");
-
+                            //persist the Merchant transaction
+                            PersistTransaction(payReceipts.MerchantReturnedReceipt, "MERCHANT");
                             payDetails.HasClientReceipt = true;
 
                             payDetails.PaidAmount = payRequest.Amount;
                             payDetails.TransactionReference = payRequest.TransactionReference;
 
                             //get tender Id details
-                            payDetails.TenderMediaId = GetTenderID(payReceipts.CustomerReturnedReceipt.ToString());
-                            payDetails.TenderMediaDetails = payDetails.TenderMediaId;
-                            Log.Info(PAY_SERVICE_LOG, $"        Pay(): payDetails.TenderMediaId: {payDetails.TenderMediaId}");
+                            payDetails.TenderMediaId = payResult.card;
+                            payDetails.TenderMediaDetails = payResult.card;
+                            payDetails.TransactionDate = DateTime.Now.ToString("dddd, dd MMMM yyyy");
+                            payDetails.TransactionTime = DateTime.Now.ToString("HH:mm:ss");
 
-                        //create receipt
-                        CreateTicket(payReceipts.CustomerReturnedReceipt, "CUSTOMER");
+                            Log.Info(PAY_SERVICE_LOG, $"        Pay(): TenderMediaId: {payDetails.TenderMediaId}");
+
+                             //create receipt
+                            CreateTicket(payReceipts.CustomerReturnedReceipt, "CUSTOMER");
                       
                             Log.Info(PAY_SERVICE_LOG, "        Pay(): credit card payment succeeded.");
                             coreCommunicator.SendMessage(CommunicatorMethods.Pay, new { Status = 0, Description = "Successful payment", PayDetailsExtended = payDetails });
@@ -480,7 +482,7 @@ namespace UK_BARCLAYCARD_SMARTPAY
                          if (wasCancelTigged && isPaymentCancelSuccessful)
                          {
                               Log.Info(PAY_SERVICE_LOG, "        Pay(): Payment was cancelled.");
-                             coreCommunicator.SendMessage(CommunicatorMethods.Pay, new { Status = 335, Description = "Failed payment. Canceled by user.", PayDetailsExtended = payDetails });
+                             coreCommunicator.SendMessage(CommunicatorMethods.Pay, new { Status = 335, Description = "Failed payment. Cancelled by user.", PayDetailsExtended = payDetails });
                          }
                     }
 
@@ -789,38 +791,6 @@ namespace UK_BARCLAYCARD_SMARTPAY
             }
         }
 
-        private string GetTenderID(string ticket)
-        {
-            string card = string.Empty;
-            string temp = string.Empty;
-
-            var values = new[] { "VISA", "MASTERCARD", "ELECTRON", "MAESTRO", "AMEX", "UNION PAY", "MASTERCARD CREDIT", "MASTERCARD DEBIT",
-                                 "VISA CONTACTLESS", "CONTACTLESS VISA", "VISA DEBIT", "VISA CREDIT",  "VISA ELECTRON",
-                                 "VISA PURCHASING",  "MASTERCARD CONTACTLESS", "CONTACTLESS MASTERCARD", "DINERS", "INTERNATIONAL MAESTRO",
-                                 "INTERNATIONAL MAESTRO DEBIT", "MAESTRO INTERNATIONAL", "UK MAESTRO DEBIT", "EXPRESSPAY", "AMERICAN EXPRESS",
-                                 "DISCOVER", "UNION PAY CREDIT", "JCB CREDIT", "GIVEX" };
-
-
-            ticket = ticket.ToUpper();
-
-            foreach (string val in values)
-            {               
-                if (ticket.Contains(val))
-                {
-                    card = val;
-                     if (string.Equals(card, val, StringComparison.OrdinalIgnoreCase))
-                     {
-                        // cards match
-                        card = val;
-                        continue;
-                     } else
-                        card = string.Empty;
-                }
-            }
-
-            Log.Info($"textracted card from receipt: {card}");
-            return card;
-        }
 
     }
 }
