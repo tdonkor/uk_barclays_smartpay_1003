@@ -107,7 +107,8 @@ namespace UK_BARCLAYCARD_SMARTPAY
 
 
             // create the transaction number
-            transNum = kioskNumber +  transactionRef + DateTime.Now.ToString("yyyyMMddHHmmss");
+            //transNum = kioskNumber +  transactionRef + DateTime.Now.ToString("yyyyMMddHHmmss");
+            transNum = DateTime.Now.ToString("yyMMdd") + 0 + kioskNumber + transactionRef;
 
             transactionReceipts = new TransactionReceipts();
 
@@ -124,7 +125,8 @@ namespace UK_BARCLAYCARD_SMARTPAY
                 throw new Exception("Transaction Reference Number can't be null or empty");
             }
 
-            description =  "K"+ kioskNumber + transactionRef;
+            //change to description description =  "K"+ kioskNumber + transactionRef;
+            description = DateTime.Now.ToString("yyMMddHHmmss");
 
             Log.Info($"Valid payment amount: {intAmount}");
             Log.Info("Transaction Reference number : " + transactionRef);

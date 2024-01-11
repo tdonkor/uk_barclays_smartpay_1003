@@ -261,7 +261,7 @@ namespace Acrelec.Mockingbird.Barclaycard_Smartpay
             kioskNumber.ControlType = SettingDataType.Int;
             kioskNumber.ControlName = "Kiosk Number";
             kioskNumber.RealName = "KioskNumber";
-            kioskNumber.CurrentValue = "10";
+            kioskNumber.CurrentValue = "1";
             kioskNumber.ControlDescription = "The Kiosk Number";
 
             port = new AdminPeripheralSetting();
